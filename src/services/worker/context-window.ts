@@ -58,13 +58,14 @@ export const FALLBACK_CONTEXT_WINDOW_TOKENS = 131_072;
 export const MIN_CONTEXT_WINDOW_TOKENS = 8_192;
 
 /**
- * Gemini has no models catalogue. All five allowlisted models are Flash-family
+ * Gemini has no models catalogue. The allowlisted models are Flash-family
  * with Google's documented 1M-token window. Keyed by the GeminiModel union so
  * an allowlist change breaks this map at compile time.
  */
 const GEMINI_CONTEXT_WINDOWS: Record<GeminiModel, number> = {
   'gemini-flash-latest': 1_048_576,
   'gemini-flash-lite-latest': 1_048_576,
+  'gemini-3.8-flash': 1_048_576,
   'gemini-3.5-flash': 1_048_576,
   'gemini-3.1-flash-lite': 1_048_576,
   'gemini-3-flash-preview': 1_048_576,

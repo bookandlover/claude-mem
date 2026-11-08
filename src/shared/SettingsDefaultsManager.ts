@@ -262,6 +262,8 @@ export interface SettingsDefaults {
   CLAUDE_MEM_GEMINI_API_KEY: string;
   CLAUDE_MEM_GEMINI_API_KEYS: string;
   CLAUDE_MEM_GEMINI_MODEL: string;
+  CLAUDE_MEM_GEMINI_AUTH_METHOD: string;
+  CLAUDE_MEM_GEMINI_CLI_PATH: string;
   CLAUDE_MEM_GEMINI_RATE_LIMITING_ENABLED: string;
   CLAUDE_MEM_OPENROUTER_API_KEY: string;
   CLAUDE_MEM_OPENROUTER_API_KEYS: string;
@@ -562,6 +564,8 @@ export class SettingsDefaultsManager {
     CLAUDE_MEM_CODEX_OBSERVATION_BATCH_MAX_CHARS: '32000',
     CLAUDE_MEM_CLAUDE_OBSERVATION_BATCH_SIZE: '1', // Queued same-context events per Claude observer prompt (1-32). 1 = one event per prompt.
     CLAUDE_MEM_CLAUDE_AUTH_METHOD: 'subscription',  // Default to logged-in Claude SDK auth (not API key)
+    CLAUDE_MEM_GEMINI_AUTH_METHOD: 'api-key', // cli uses Antigravity CLI local Google login
+    CLAUDE_MEM_GEMINI_CLI_PATH: '', // absolute executable path for cli authentication
     CLAUDE_MEM_GEMINI_API_KEY: '',  // Empty by default, can be set via UI or env
     CLAUDE_MEM_GEMINI_API_KEYS: '',  // Optional extra keys (newline/comma separated). Rotates on rate_limit/quota_exhausted/auth_invalid — see src/shared/api-key-pool.ts.
     CLAUDE_MEM_GEMINI_MODEL: 'gemini-flash-latest',  // Google-maintained alias → current GA Flash model (stays valid for new API keys)

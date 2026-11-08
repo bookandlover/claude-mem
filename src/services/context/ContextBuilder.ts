@@ -9,6 +9,9 @@ import path from 'path';
 import { homedir } from 'os';
 import { existsSync, unlinkSync } from 'fs';
 import { Database } from 'bun:sqlite';
+import { SettingsDefaultsManager } from '../../shared/SettingsDefaultsManager.js';
+import { paths } from '../../shared/paths.js';
+import { parseProviderBySource } from '../../shared/provider-by-source.js';
 import { DB_PATH } from '../../shared/paths.js';
 import { logger } from '../../utils/logger.js';
 import { getProjectContext } from '../../utils/project-name.js';
@@ -264,17 +267,28 @@ export function observerHealthWarning(forHuman: boolean = false): string {
   // The notice was mirrored under whichever account was selected then, so a
   // Claude hold is dropped here unless it pauses the account selected now. A
   // hold mirrored before holds carried their own account uses the ledger's.
-  const mirrored = health?.quotaCooldown;
+  const settings = SettingsDefaultsManager.loadFromFile(paths.settings());
+  const currentPrimary = settings.CLAUDE_MEM_PROVIDER;
+  const mapped = parseProviderBySource(settings.CLAUDE_MEM_PROVIDER_BY_SOURCE);
+  const primaries = new Set([currentPrimary, ...(mapped.ok ? mapped.map.values() : [])]);
+  const snapshot = health?.quotaCooldown;
+  // The persisted notice describes the route at the time of the failure.
+  // A manual primary change invalidates that snapshot; it cannot pause the new route.
+  const mirrored = snapshot && primaries.has(snapshot.notice?.mainProvider ?? snapshot.provider)
+    ? snapshot : null;
   const cooldown = mirrored?.notice
     ? { ...mirrored, notice: { ...mirrored.notice, holds: mirrored.notice.holds.filter(hold =>
       cooldownAppliesToCurrentAccount({ provider: hold.provider, profile: hold.profile ?? mirrored.profile })) } }
     : mirrored;
+  const fallback = settings.CLAUDE_MEM_QUOTA_FALLBACK_PROVIDER || 'claude';
+  const oldProviderQuotaFailure = health && (isQuotaFailure(health) || isQuotaGuardPause(health))
+    && health.lastErrorProvider && !primaries.has(health.lastErrorProvider) && health.lastErrorProvider !== fallback;
   let notice: string | null = null;
   if (health && isObserverQuotaCooldownActive(health) && cooldown
     && (cooldown.notice ? cooldown.notice.holds.length > 0 : cooldownAppliesToCurrentAccount(cooldown))
     && (!isObserverUnhealthy(health) || (cooldown.notice && (isQuotaFailure(health) || isQuotaGuardPause(health))))) {
     notice = renderObserverQuotaCooldownNotice({ ...health, quotaCooldown: cooldown });
-  } else if (isObserverUnhealthy(health)) {
+  } else if (isObserverUnhealthy(health) && !oldProviderQuotaFailure) {
     notice = renderObserverHealthWarning(health);
   }
   // Cloud sync health rides the same slot: a paused (401/403) or long-failing

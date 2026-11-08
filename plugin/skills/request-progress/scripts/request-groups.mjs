@@ -1053,6 +1053,10 @@ var init_SettingsDefaultsManager = __esm({
         // Queued same-context events per Claude observer prompt (1-32). 1 = one event per prompt.
         CLAUDE_MEM_CLAUDE_AUTH_METHOD: "subscription",
         // Default to logged-in Claude SDK auth (not API key)
+        CLAUDE_MEM_GEMINI_AUTH_METHOD: "api-key",
+        // cli uses Antigravity CLI local Google login
+        CLAUDE_MEM_GEMINI_CLI_PATH: "",
+        // absolute executable path for cli authentication
         CLAUDE_MEM_GEMINI_API_KEY: "",
         // Empty by default, can be set via UI or env
         CLAUDE_MEM_GEMINI_API_KEYS: "",

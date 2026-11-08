@@ -75,6 +75,12 @@ describe('GeminiProvider', () => {
   let agent: GeminiProvider;
   let originalFetch: typeof global.fetch;
 
+  it('honors the explicit Gemini 3.8 Flash model without alias substitution', () => {
+    loadFromFileSpy.mockReturnValue({ CLAUDE_MEM_GEMINI_MODEL: 'gemini-3.8-flash' } as any);
+    expect((agent as any).getGeminiConfig().model).toBe('gemini-3.8-flash');
+  });
+
+
   let mockStoreObservation: any;
   let mockStoreObservations: any; 
   let mockStoreSummary: any;

@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, mock, setSystemTime, spyOn } from 'bun:test';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import {
@@ -1079,6 +1079,14 @@ describe('ContextBuilder observer-health injection', () => {
   }
 
   function runContextChild(childDataDir: string, nowMs?: number): ChildRender {
+    // Existing fixtures describe an unchanged route unless a test explicitly changes it.
+    const settingsFile = join(childDataDir, 'settings.json');
+    if (!existsSync(settingsFile)) {
+      const snapshot = JSON.parse(readFileSync(join(childDataDir, 'observer-health.json'), 'utf8')).quotaCooldown;
+      writeFileSync(settingsFile, JSON.stringify({
+        CLAUDE_MEM_PROVIDER: snapshot?.notice?.mainProvider ?? 'claude',
+      }));
+    }
     const result = Bun.spawnSync([process.execPath, '-e', `
       import { generateContext, withObserverHealthWarning } from './src/services/context/ContextBuilder.ts';
       import { ModeManager } from './src/services/domain/ModeManager.ts';
@@ -1158,6 +1166,28 @@ describe('ContextBuilder observer-health injection', () => {
     expect(emptyDbText).not.toContain("can't save memories");
     expect(emptyDbText).not.toContain('quota cooldown');
     expect(humanText).toBe('TIMELINE_BODY');
+  });
+
+  it('ignores a stale Claude pause after the primary changes to Codex', () => {
+    writeFileSync(join(dataDir, 'settings.json'), JSON.stringify({
+      CLAUDE_MEM_PROVIDER: 'codex', CLAUDE_MEM_QUOTA_FALLBACK_PROVIDER: 'gemini',
+    }));
+    writeFileSync(healthPath, JSON.stringify(unhealthyState({
+      consecutiveFailures: 0, lastSuccessAt: Date.now(),
+      quotaCooldown: activeCooldown({ until: Date.now() + 20 * 60_000, profile: childProfile() }),
+    })));
+    expect(runContextChild(dataDir).agentText).toBe('TIMELINE_BODY');
+  });
+
+  it('does not re-label an old Claude quota failure as a current Codex outage', () => {
+    writeFileSync(join(dataDir, 'settings.json'), JSON.stringify({
+      CLAUDE_MEM_PROVIDER: 'codex', CLAUDE_MEM_QUOTA_FALLBACK_PROVIDER: 'gemini',
+    }));
+    writeFileSync(healthPath, JSON.stringify(unhealthyState({
+      lastErrorProvider: 'claude', lastErrorKind: 'quota_guard',
+      quotaCooldown: activeCooldown({ until: Date.now() + 20 * 60_000, profile: childProfile() }),
+    })));
+    expect(runContextChild(dataDir).agentText).toBe('TIMELINE_BODY');
   });
 
   it('surfaces a cooldown pause when the ledger is otherwise green', () => {
