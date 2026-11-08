@@ -58,3 +58,10 @@ describe('SettingsRoutes openai-compatible validation', () => {
     expect(routes().validateSettings({ CLAUDE_MEM_OPENAI_COMPAT_PRESET: 'nvidia-nimm' }).valid).toBe(true);
   });
 });
+
+describe('SettingsRoutes Gemini 3.8 Flash', () => {
+  it('accepts the pinned model when the viewer saves the complete settings form', () => {
+    const routes = new SettingsRoutes({} as SettingsManager) as unknown as SettingsValidator;
+    expect(routes.validateSettings({ CLAUDE_MEM_GEMINI_MODEL: 'gemini-3.8-flash' }).valid).toBe(true);
+  });
+});

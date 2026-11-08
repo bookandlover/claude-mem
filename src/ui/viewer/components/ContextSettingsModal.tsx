@@ -597,6 +597,7 @@ export function ContextSettingsModal({
                     >
                       <option value="gemini-flash-latest">{t('gemini-flash-latest (default, latest GA Flash)')}</option>
                       <option value="gemini-flash-lite-latest">{t('gemini-flash-lite-latest (latest GA Flash-Lite)')}</option>
+                      <option value="gemini-3.8-flash">{t('gemini-3.8-flash')}</option>
                       <option value="gemini-3.5-flash">{t('gemini-3.5-flash')}</option>
                       <option value="gemini-3.1-flash-lite">{t('gemini-3.1-flash-lite')}</option>
                       <option value="gemini-3-flash-preview">{t('gemini-3-flash-preview (preview)')}</option>
