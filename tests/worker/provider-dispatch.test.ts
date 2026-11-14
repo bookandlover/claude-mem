@@ -57,6 +57,8 @@ const ENV_KEYS = [
   'CLAUDE_MEM_OPENROUTER_BASE_URL',
   'CLAUDE_MEM_PRO_FALLBACK_AT',
   'CLAUDE_MEM_GEMINI_API_KEY',
+  'CLAUDE_MEM_GEMINI_AUTH_METHOD',
+  'CLAUDE_MEM_GEMINI_CLI_PATH',
   'CMEM_PRO_ORIGIN',
   'CLAUDE_MEM_QUOTA_FALLBACK_PROVIDER',
   'CLAUDE_MEM_QUOTA_FALLBACK_MODEL',
@@ -615,6 +617,22 @@ describe('provider-dispatch', () => {
     // generator starts in every later file of the same bun process.
     afterAll(() => {
       resetQuotaCooldownsForTesting();
+    });
+
+    it('routes Codex holds to local Gemini CLI and back, never Claude even if both hold', () => {
+      Object.assign(process.env, {
+        CLAUDE_MEM_PROVIDER: 'codex', CLAUDE_MEM_PROVIDER_BY_SOURCE: '',
+        CLAUDE_MEM_QUOTA_FALLBACK_PROVIDER: 'gemini',
+        CLAUDE_MEM_GEMINI_AUTH_METHOD: 'cli', CLAUDE_MEM_GEMINI_CLI_PATH: process.execPath,
+        CLAUDE_MEM_GEMINI_API_KEY: '',
+      });
+      expect(getSelectedProvider()).toBe('codex');
+      recordQuotaExhausted('codex', 'test quota');
+      expect(selectProviderForGenerator().provider).toBe('gemini');
+      recordQuotaExhausted('gemini', 'test quota');
+      expect(selectProviderForGenerator().provider).toBe('codex');
+      clearQuotaCooldown('codex');
+      expect(getSelectedProvider()).toBe('codex');
     });
 
     it('with the fallback turned off, every primary is unchanged', () => {

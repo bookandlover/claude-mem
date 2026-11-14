@@ -72,6 +72,14 @@ describe('GeminiProvider', () => {
   let agent: GeminiProvider;
   let originalFetch: typeof global.fetch;
 
+  it('honors the explicit Gemini 4 Hydrogen and 3.8 Flash models without alias substitution', () => {
+    loadFromFileSpy.mockReturnValue({ CLAUDE_MEM_GEMINI_MODEL: 'gemini-4-hydrogen' } as any);
+    expect((agent as any).getGeminiConfig().model).toBe('gemini-4-hydrogen');
+    loadFromFileSpy.mockReturnValue({ CLAUDE_MEM_GEMINI_MODEL: 'gemini-3.8-flash' } as any);
+    expect((agent as any).getGeminiConfig().model).toBe('gemini-3.8-flash');
+  });
+
+
   let mockStoreObservation: any;
   let mockStoreObservations: any; 
   let mockStoreSummary: any;

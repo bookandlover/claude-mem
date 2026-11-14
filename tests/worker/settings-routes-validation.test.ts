@@ -29,3 +29,11 @@ describe('SettingsRoutes observer capture validation', () => {
     });
   });
 });
+
+describe('SettingsRoutes Gemini models', () => {
+  it('accepts the pinned models when the viewer saves the complete settings form', () => {
+    const routes = new SettingsRoutes({} as SettingsManager) as unknown as SettingsValidator;
+    expect(routes.validateSettings({ CLAUDE_MEM_GEMINI_MODEL: 'gemini-4-hydrogen' }).valid).toBe(true);
+    expect(routes.validateSettings({ CLAUDE_MEM_GEMINI_MODEL: 'gemini-3.8-flash' }).valid).toBe(true);
+  });
+});

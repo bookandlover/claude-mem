@@ -1,3 +1,4 @@
+import { isGeminiCliAvailable, queryGeminiCli } from './gemini-cli-observer.js';
 
 import { DatabaseManager } from './DatabaseManager.js';
 import { SessionManager } from './SessionManager.js';
@@ -171,6 +172,8 @@ export function classifyGeminiError(input: {
 export type GeminiModel =
   | 'gemini-flash-latest'
   | 'gemini-flash-lite-latest'
+  | 'gemini-4-hydrogen'
+  | 'gemini-3.8-flash'
   | 'gemini-3.5-flash'
   | 'gemini-3.1-flash-lite'
   | 'gemini-3-flash-preview';
@@ -178,6 +181,8 @@ export type GeminiModel =
 export const GEMINI_RPM_LIMITS: Record<GeminiModel, number> = {
   'gemini-flash-latest': 10,
   'gemini-flash-lite-latest': 15,
+  'gemini-4-hydrogen': 10,
+  'gemini-3.8-flash': 10,
   'gemini-3.5-flash': 10,
   'gemini-3.1-flash-lite': 15,
   'gemini-3-flash-preview': 5,
@@ -307,6 +312,7 @@ interface GeminiContent {
 }
 
 interface GeminiConfig {
+  cliPath?: string;
   /**
    * The pool's first key. Kept as its own field because everything that only
    * needs to know "is Gemini usable" reads it, and because a single-key install
@@ -334,6 +340,10 @@ export class GeminiProvider extends OpenAICompatibleProvider<GeminiConfig> {
 
   protected getConfig(): GeminiConfig {
     return this.getGeminiConfig();
+  }
+
+  protected requiresApiKey(config: GeminiConfig): boolean {
+    return !config.cliPath;
   }
 
   protected missingApiKeyError(): Error {
@@ -406,6 +416,11 @@ export class GeminiProvider extends OpenAICompatibleProvider<GeminiConfig> {
     perAttemptTimeoutMs?: number,
     paidSendBudget?: PaidSendBudget,
   ): Promise<ProviderQueryResult> {
+    if (config.cliPath) {
+      return withRetry(attemptSignal => queryGeminiCli(history, config.model, config.cliPath!, attemptSignal), {
+        maxRetries: 0, abortSignal: signal, perAttemptTimeoutMs, paidSendBudget, label: 'Gemini CLI',
+      });
+    }
     // Rotation wraps withRetry rather than living inside it: the inner retry
     // still owns transient failures against one key, and this outer sweep moves
     // on only for the kinds that mean the key itself is spent.
@@ -637,7 +652,9 @@ export class GeminiProvider extends OpenAICompatibleProvider<GeminiConfig> {
     const settingsPath = paths.settings();
     const settings = SettingsDefaultsManager.loadFromFile(settingsPath);
 
-    const apiKeys = resolveGeminiKeys(settings);
+    const cliPath = settings.CLAUDE_MEM_GEMINI_AUTH_METHOD === 'cli' ? settings.CLAUDE_MEM_GEMINI_CLI_PATH : undefined;
+    if (settings.CLAUDE_MEM_GEMINI_AUTH_METHOD === 'cli' && !cliPath) throw new Error('Gemini CLI path is required');
+    const apiKeys = cliPath ? [] : resolveGeminiKeys(settings);
     // With only the list configured, its first entry becomes the primary so
     // availability checks and error messages keep working unchanged.
     const apiKey = apiKeys[0] ?? '';
@@ -647,6 +664,8 @@ export class GeminiProvider extends OpenAICompatibleProvider<GeminiConfig> {
     const validModels: GeminiModel[] = [
       'gemini-flash-latest',
       'gemini-flash-lite-latest',
+      'gemini-4-hydrogen',
+      'gemini-3.8-flash',
       'gemini-3.5-flash',
       'gemini-3.1-flash-lite',
       'gemini-3-flash-preview',
@@ -665,7 +684,7 @@ export class GeminiProvider extends OpenAICompatibleProvider<GeminiConfig> {
 
     const rateLimitingEnabled = settings.CLAUDE_MEM_GEMINI_RATE_LIMITING_ENABLED !== 'false';
 
-    return { apiKey, apiKeys, model, rateLimitingEnabled };
+    return { apiKey, apiKeys, model, rateLimitingEnabled, cliPath };
   }
 }
 
@@ -684,6 +703,7 @@ function resolveGeminiKeys(settings: ReturnType<typeof SettingsDefaultsManager.l
 
 export function isGeminiAvailable(): boolean {
   const settings = SettingsDefaultsManager.loadFromFile(paths.settings());
+  if (settings.CLAUDE_MEM_GEMINI_AUTH_METHOD === 'cli') return isGeminiCliAvailable(settings.CLAUDE_MEM_GEMINI_CLI_PATH);
   // A pool-only install (no CLAUDE_MEM_GEMINI_API_KEY, keys supplied as a list)
   // is still available — dispatch must not silently fall through to Claude.
   return resolveGeminiKeys(settings).length > 0;
